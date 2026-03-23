@@ -1,211 +1,211 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Scanner IA de Estoque</title>
+    <title>Sistema de Inventário IA - Mercado</title>
     <style>
         :root {
-            --bg-color: #f4f4f9;
-            --text-color: #333;
-            --card-bg: #fff;
+            --bg: #f0f2f5;
+            --card: #ffffff;
+            --text: #1c1e21;
             --primary: #007bff;
+            --secondary: #6c757d;
         }
 
         [data-theme="dark"] {
-            --bg-color: #1a1a2e;
-            --text-color: #e6e6e6;
-            --card-bg: #16213e;
-            --primary: #0f3460;
+            --bg: #18191a;
+            --card: #242526;
+            --text: #e4e6eb;
+            --primary: #2d88ff;
         }
 
         body {
-            font-family: Arial, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-color);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
             display: flex;
             flex-direction: column;
             align-items: center;
-            padding: 20px;
-            transition: background 0.3s, color 0.3s;
-            margin: 0;
+            transition: 0.3s;
+        }
+
+        .container {
+            width: 90%;
+            max-width: 500px;
+            margin-top: 20px;
         }
 
         .header {
             display: flex;
             justify-content: space-between;
-            width: 100%;
-            max-width: 400px;
-            margin-bottom: 20px;
             align-items: center;
+            margin-bottom: 20px;
         }
 
-        .scanner-container {
-            background: var(--card-bg);
+        .scanner-box {
+            background: var(--card);
             padding: 15px;
-            border-radius: 12px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-            width: 100%;
-            max-width: 400px;
+            border-radius: 15px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
             text-align: center;
         }
 
         video {
             width: 100%;
-            border-radius: 8px;
+            border-radius: 10px;
             background: #000;
+            margin-bottom: 10px;
         }
 
         button {
-            background: var(--primary);
-            color: white;
-            border: none;
-            padding: 12px 20px;
-            margin-top: 15px;
-            border-radius: 8px;
-            font-size: 16px;
-            cursor: pointer;
             width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
             font-weight: bold;
+            cursor: pointer;
+            transition: 0.2s;
+            margin-bottom: 10px;
         }
 
-        button:active {
-            opacity: 0.8;
+        .btn-scan { background: var(--primary); color: white; }
+        .btn-theme { width: auto; background: var(--secondary); color: white; padding: 8px 15px; }
+
+        .result-area {
+            background: var(--card);
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 15px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
         }
 
-        #theme-toggle {
-            width: auto;
-            padding: 8px 12px;
-            margin: 0;
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
             font-size: 14px;
         }
 
-        .result-box {
-            margin-top: 20px;
-            text-align: left;
-            background: var(--bg-color);
+        th, td {
+            border-bottom: 1px solid #ddd;
             padding: 10px;
-            border-radius: 8px;
-            font-family: monospace;
-            white-space: pre-wrap;
-            word-wrap: break-word;
+            text-align: left;
         }
+
+        .status { font-style: italic; color: var(--secondary); font-size: 13px; }
     </style>
 </head>
 <body>
 
+<div class="container">
     <div class="header">
-        <h2>Scanner IA</h2>
-        <button id="theme-toggle" onclick="toggleTheme()">🌙 Escuro</button>
+        <h1>📦 IA Scanner</h1>
+        <button class="btn-theme" onclick="toggleTheme()">🌓 Alternar Tema</button>
     </div>
 
-    <div class="scanner-container">
-        <video id="camera" autoplay playsinline></video>
+    <div class="scanner-box">
+        <video id="video" autoplay playsinline></video>
         <canvas id="canvas" style="display:none;"></canvas>
-        <button onclick="capturarEAnalisar()" id="btn-scan">📷 Escanear Etiqueta</button>
-        
-        <div id="resultado" class="result-box">Aguardando escaneamento...</div>
+        <button class="btn-scan" id="btnAction" onclick="capturar()">📷 LER ETIQUETA</button>
+        <div id="status" class="status">Câmera pronta...</div>
     </div>
 
-    <script>
-        // === COLOQUE SUA CHAVE DA API AQUI ===
-        const API_KEY = 'AIzaSyCZbo9rhCsY83l8myxTnqb_ahsiQ1SnUr8'; 
-        
-        const video = document.getElementById('camera');
-        const canvas = document.getElementById('canvas');
-        const resultadoDiv = document.getElementById('resultado');
-        const btnScan = document.getElementById('btn-scan');
+    <div class="result-area">
+        <h3>Produtos Scaneados</h3>
+        <table id="tabelaProdutos">
+            <thead>
+                <tr>
+                    <th>Marca</th>
+                    <th>Produto</th>
+                    <th>Qtd</th>
+                    <th>Preço</th>
+                </tr>
+            </thead>
+            <tbody>
+                </tbody>
+        </table>
+    </div>
+</div>
 
-        // Alternar Tema Claro/Escuro
-        function toggleTheme() {
-            const body = document.body;
-            const btn = document.getElementById('theme-toggle');
-            if (body.getAttribute('data-theme') === 'dark') {
-                body.removeAttribute('data-theme');
-                btn.innerText = "🌙 Escuro";
-            } else {
-                body.setAttribute('data-theme', 'dark');
-                btn.innerText = "☀️ Claro";
-            }
-        }
+<script>
+    // A SUA CHAVE JÁ ESTÁ APLICADA AQUI
+    const CHAVE_API = 'AIzaSyCZbo9rhCsY83l8myxTnqb_ahsiQ1SnUr8';
+    
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const status = document.getElementById('status');
+    const btnAction = document.getElementById('btnAction');
+    const tabela = document.getElementById('tabelaProdutos').getElementsByTagName('tbody')[0];
 
-        // Ligar a câmera traseira do celular
-        async function iniciarCamera() {
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { facingMode: 'environment' } // Força a câmera traseira
-                });
-                video.srcObject = stream;
-            } catch (err) {
-                resultadoDiv.innerText = "Erro ao acessar a câmera. Verifique as permissões.";
-                console.error(err);
-            }
-        }
+    // Inicia a câmera traseira
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+        .then(stream => { video.srcObject = stream; })
+        .catch(err => { status.innerText = "Erro ao abrir câmera."; });
 
-        // Tirar a foto e mandar para a IA
-        async function capturarEAnalisar() {
-            if (!API_KEY || API_KEY === 'AIzaSyCZbo9rhCsY83l8myxTnqb_ahsiQ1SnUr8') {
-                resultadoDiv.innerText = "ERRO: Você precisa colocar sua API Key no código!";
-                return;
-            }
+    function toggleTheme() {
+        document.body.hasAttribute('data-theme') ? 
+        document.body.removeAttribute('data-theme') : 
+        document.body.setAttribute('data-theme', 'dark');
+    }
 
-            btnScan.innerText = "⏳ Analisando...";
-            btnScan.disabled = true;
-            resultadoDiv.innerText = "Lendo imagem...";
+    async function capturar() {
+        btnAction.disabled = true;
+        btnAction.innerText = "⏳ ANALISANDO...";
+        status.innerText = "IA processando imagem...";
 
-            // Capturar o frame do vídeo
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        // Tira o "print" do vídeo
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        canvas.getContext('2d').drawImage(video, 0, 0);
+        const base64Image = canvas.toDataURL('image/jpeg').split(',')[1];
+
+        // Prompt para a IA
+        const prompt = "Analise a etiqueta e retorne APENAS um JSON com: marca, produto, quantidade, preco. Se não achar, use null.";
+
+        try {
+            const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${CHAVE_API}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{
+                        parts: [
+                            { text: prompt },
+                            { inline_data: { mime_type: "image/jpeg", data: base64Image } }
+                        ]
+                    }]
+                })
+            });
+
+            const data = await res.json();
+            let rawText = data.candidates[0].content.parts[0].text;
             
-            // Converter a imagem para Base64 (sem o cabeçalho "data:image/jpeg;base64,")
-            const imagemBase64 = canvas.toDataURL('image/jpeg').split(',')[1];
-
-            // Montar a requisição para o Gemini 1.5 Flash
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
+            // Limpa o JSON vindo da IA
+            const cleanJson = JSON.parse(rawText.replace(/```json|```/g, ""));
             
-            const payload = {
-                contents: [{
-                    parts: [
-                        { text: "Atue como um scanner de inventário profissional. Analise a imagem e extraia os dados no formato JSON: {\"marca\": \"...\", \"produto\": \"...\", \"quantidade\": \"...\", \"preco\": 0.00}. Caso não encontre algo, retorne null. Retorne apenas o JSON limpo." },
-                        { inline_data: { mime_type: "image/jpeg", data: imagemBase64 } }
-                    ]
-                }]
-            };
-
-            try {
-                const response = await fetch(url, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-
-                const data = await response.json();
-                
-                // Extrair o texto da resposta do Gemini
-                let textoResposta = data.candidates[0].content.parts[0].text;
-                
-                // Limpar a formatação markdown (```json ... ```) se a IA retornar com ela
-                textoResposta = textoResposta.replace(/```json/g, "").replace(/```/g, "").trim();
-                
-                // Mostrar o resultado na tela
-                resultadoDiv.innerText = JSON.stringify(JSON.parse(textoResposta), null, 2);
-                
-                // AQUI VOCÊ PODE CHAMAR A FUNÇÃO PARA SALVAR NA PLANILHA
-                // salvarNaPlanilha(JSON.parse(textoResposta));
-
-            } catch (error) {
-                console.error(error);
-                resultadoDiv.innerText = "Erro ao processar a imagem. Tente novamente.";
-            } finally {
-                btnScan.innerText = "📷 Escanear Etiqueta";
-                btnScan.disabled = false;
-            }
+            adicionarNaTabela(cleanJson);
+            status.innerText = "Sucesso! Produto adicionado.";
+        } catch (e) {
+            status.innerText = "Erro ao ler. Tente focar melhor.";
+            console.error(e);
+        } finally {
+            btnAction.disabled = false;
+            btnAction.innerText = "📷 LER ETIQUETA";
         }
+    }
 
-        // Inicia a câmera quando a página carrega
-        window.onload = iniciarCamera;
-    </script>
+    function adicionarNaTabela(item) {
+        let novaLinha = tabela.insertRow();
+        novaLinha.innerHTML = `
+            <td>${item.marca || '-'}</td>
+            <td>${item.produto || '-'}</td>
+            <td>${item.quantidade || '-'}</td>
+            <td>R$ ${item.preco || '0.00'}</td>
+        `;
+    }
+</script>
+
 </body>
 </html>
